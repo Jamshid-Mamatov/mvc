@@ -11,5 +11,12 @@ class HomeController extends Controller
         $data= ['name'=>'John Doe'];
         $this->render('index',$data);
     }
+
+
+    public function about()
+    {
+        $data= ['name'=>'John Doe','age'=>30];
+        $this->render('about',$data);
+    }
 }
 ?>

@@ -1,41 +1,52 @@
+
 <?php
 
 
-class Router
-{
+class Router {
     protected $routes = [];
 
-
-    public function add($route, $controller, $method = 'GET')
-    {
-        $this->routes[$route] = [
-            'controller' => $controller,
-            'method' => $method
-        ];
+    public function add($route, $controllerAction) {
+        // Convert dynamic segments (e.g., ":id") to regex patterns 
+        $route = preg_replace('/:([a-zA-Z0-9]+)/', '(?P<$1>[a-zA-Z0-9-]+)', $route);
+        $route = "#^$route$#i"; // The "i" makes it case-insensitive
+        // var_dump($route);
+        $this->routes[$route] = $controllerAction;
     }
 
-    // dispatch the reqeust to the appropriate controller
-    public function dispatch($url)
-    {
-        // var_dump($this->routes[$url]);
-        // var_dump(parse_url($url, PHP_URL_PATH));
-        // $url = trim(parse_url($url, PHP_URL_PATH), '/');
-        $url=parse_url($url, PHP_URL_PATH);
-        // var_dump($url);
-        if(!array_key_exists($url, $this->routes)) {
-            echo('404');
-            return;
-        }
-        else{
-            $controllerAction = explode('@', $this->routes[$url]['controller']);
-            $controller = $controllerAction[0];
-            $action = $controllerAction[1];
-            // var_dump(ROOT_PATH);
-            require_once(ROOT_PATH.'/app/Controllers/'.$controller.'.php');
+    public function dispatch($url) {
+        $url = '/' . trim(parse_url($url, PHP_URL_PATH), '/');
+        echo "<pre>Requested URL: $url</pre>"; // Debug
+    
+        foreach ($this->routes as $route => $controllerAction) {
+            echo "<pre>Testing route: $route</pre>"; // Debug
+            if (preg_match($route, $url, $matches)) {
+                echo "<pre>Matched route: $route</pre>"; // Debug
+                // Split controller and action
+                // var_dump($controllerAction);
+                $controllerAction = explode('@', $controllerAction);
+                $controllerName = $controllerAction[0];
+                $action = $controllerAction[1];
 
-            $controller = new $controller();
-            $controller->$action();
+                // Include controller
+                require_once "../app/Controllers/$controllerName.php";
+
+                // Extract URL parameters (e.g., "id")
+                $params = [];
+                foreach ($matches as $key => $value) {
+                    if (is_string($key)) {
+                        $params[$key] = $value;
+                    }
+                }
+
+                // Call the controller action with parameters
+                $controller = new $controllerName();
+                call_user_func_array([$controller, $action], $params);
+                return;
+            }
         }
 
+        // 404 if no route matches
+        // http_response_code(404);
+        echo "404 Not Found";
     }
 }
